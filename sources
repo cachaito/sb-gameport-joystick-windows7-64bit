@@ -1,0 +1,16 @@
+TARGETNAME=GameportHid
+TARGETTYPE=DRIVER
+
+KMDF_VERSION_MAJOR=1
+
+C_DEFINES=-DDBG=1
+
+TARGETLIBS=$(TARGETLIBS) \
+           $(DDK_LIB_PATH)\hidclass.lib
+
+MSC_WARNING_LEVEL=/W4
+
+SOURCES=driver.c   \
+        device.c   \
+        hid.c      \
+        gameport.rc

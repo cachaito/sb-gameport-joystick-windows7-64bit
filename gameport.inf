@@ -1,0 +1,93 @@
+;
+; GameportHid - KMDF HID minidriver for the SB Live! game port function.
+; Windows 7 x64 pattern (mirrors hidusbfx2.inx, section *.Inst.Win7):
+;   - GameportHid.sys is the FUNCTION driver of PCI\VEN_1102&DEV_7002
+;   - inbox mshidkmdf.sys is attached as UpperFilters and bridges us
+;     to hidclass (registers itself as the HID minidriver and passes
+;     IOCTL_HID_* requests down to our WDF queues).
+;
+; Install (test mode):  devcon update gameport.inf "PCI\VEN_1102&DEV_7002"
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=HIDClass
+ClassGuid={745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Provider=%Provider%
+DriverVer=09/28/2026,1.0.0.0
+CatalogFile=gameport.cat
+
+[DestinationDirs]
+DefaultDestDir=12
+GameportHid.CopyFiles=12
+GameportHid.CoInstCopyFiles=11
+
+[SourceDisksNames]
+1=%DiskName%
+
+[SourceDisksFiles]
+GameportHid.sys=1
+WdfCoInstaller01009.dll=1
+
+[Manufacturer]
+%MfgName%=Std,NTamd64
+
+[Std.NTamd64]
+%GameportHid.DeviceDesc%=GameportHid.Inst, PCI\VEN_1102&DEV_7002
+
+; ---------------- install ----------------
+
+[GameportHid.Inst.NT]
+CopyFiles=GameportHid.CopyFiles
+
+[GameportHid.CopyFiles]
+GameportHid.sys
+
+[GameportHid.Inst.NT.HW]
+AddReg=GameportHid.FilterReg
+
+[GameportHid.FilterReg]
+; The inbox KMDF<->HIDClass mapper. This service exists on Win7.
+HKR,,"UpperFilters",0x00010000,"mshidkmdf"
+; Fallback: if the mshidkmdf service were missing on your build,
+; uncomment the two lines below and comment the line above:
+;HKR,,"UpperFilters",0x00010000,"mshidkmdf"
+; (service itself can be registered with an AddService like hidkmdf
+;  in the original hidusbfx2.inx - see WDK sample for details)
+
+[GameportHid.Inst.NT.Services]
+AddService=GameportHid,0x00000002,GameportHid_Service_Inst
+
+[GameportHid_Service_Inst]
+DisplayName=%GameportHid.SvcDesc%
+ServiceType=1                  ; SERVICE_KERNEL_DRIVER
+StartType=3                    ; SERVICE_DEMAND_START
+ErrorControl=1                 ; SERVICE_ERROR_NORMAL
+ServiceBinary=%12%\GameportHid.sys
+LoadOrderGroup=PNP Filter
+
+; ---------------- KMDF coinstaller (Win7 has KMDF 1.9 inbox, so this
+; section is belt-and-braces) ----------------
+
+[GameportHid.Inst.NT.CoInstallers]
+AddReg=GameportHid.CoInstAddReg
+CopyFiles=GameportHid.CoInstCopyFiles
+
+[GameportHid.CoInstAddReg]
+HKR,,CoInstallers32,0x00010000,"WdfCoInstaller01009.dll,WdfCoInstaller"
+
+[GameportHid.CoInstCopyFiles]
+WdfCoInstaller01009.dll
+
+[GameportHid.Inst.NT.Wdf]
+KmdfService=GameportHid,GameportHid_wdfsect
+
+[GameportHid_wdfsect]
+KmdfLibraryVersion=1.9
+
+[Strings]
+Provider="Bartek Szuster"
+MfgName="Retro Gameport Project"
+GameportHid.DeviceDesc="SB Live! Game Port (HID Joystick)"
+GameportHid.SvcDesc="GameportHid Driver"
+DiskName="GameportHid Installation Disk"
